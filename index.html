@@ -1,0 +1,237 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>html,body{margin:0;background:#0f1712;color-scheme:dark}[hidden]{display:none!important}</style></head><body>
+<title>Switchback</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ink:#0f1712; --ink-a:rgba(15,23,18,.74); --paper:#eef3e6; --slate:#93a493;
+    --volt:#c6ff3d; --clay:#ff7a2f; --sky:#7fd0e6; --line:rgba(238,243,230,.14);
+    --display:"Big Shoulders Display","Barlow Semi Condensed","Arial Narrow",sans-serif;
+    --body:"Barlow Semi Condensed","Helvetica Neue",Arial,sans-serif;
+  }
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--body)}
+  #gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .hud{position:fixed;pointer-events:none;z-index:2}
+  .panel{background:var(--ink-a);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:6px}
+  #zone{top:calc(16px + env(safe-area-inset-top,0px));left:16px;padding:10px 14px;display:grid;gap:2px}
+  #zone .brand{font-family:var(--display);font-weight:900;letter-spacing:.14em;font-size:13px;color:var(--volt)}
+  #zone .name{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.06em;line-height:1}
+  #zone .elev{font-size:13px;color:var(--slate);font-variant-numeric:tabular-nums}
+  #speedo{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));padding:12px 16px 14px;min-width:210px;display:grid;gap:8px}
+  #speedo .row{display:flex;align-items:baseline;gap:8px}
+  #spd{font-family:var(--display);font-weight:900;font-size:68px;line-height:.85;font-variant-numeric:tabular-nums;min-width:2.2ch}
+  #speedo .unit{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.12em;color:var(--slate)}
+  #state{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.14em;padding:4px 10px 3px;border-radius:3px;background:var(--paper);color:var(--ink);transition:background .2s,color .2s}
+  .pill[data-s="MUD"]{background:#6b4a2e;color:#fff}
+  .pill[data-s="ROCK"]{background:#9aa3ad;color:var(--ink)}
+  .pill[data-s="GRAVEL"]{background:#c9b48a;color:var(--ink)}
+  .pill[data-s="TRAIL"]{background:var(--clay);color:#fff}
+  .pill.tier{background:rgba(238,243,230,.12);color:var(--paper);border:1px solid var(--line)}
+  .pill.tier[data-t="ECO"]{color:#8fe3a6}.pill.tier[data-t="TRAIL"]{color:var(--sky)}.pill.tier[data-t="BOOST"]{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .pill.tier[data-t="CUT"]{background:#ff3b3b;color:#fff;border-color:#ff3b3b;animation:pulse .5s infinite}
+  #bonus{font-size:14px;font-weight:600;color:var(--volt);letter-spacing:.04em;min-height:1.2em}
+  .gauge{display:grid;grid-template-columns:4.6em 1fr 3.6em;align-items:center;gap:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+  .gauge .gv{text-align:right;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .gauge .bar{height:6px;border-radius:3px;background:rgba(238,243,230,.12);overflow:hidden;position:relative}
+  #battFill{height:100%;background:var(--volt);transition:width .2s}
+  #battFill.regen{background:#8fe3a6}
+  #battFill.low{background:#ff3b3b;animation:pulse 1s infinite}
+  #heatFill{height:100%;background:linear-gradient(90deg,#ffc26b,#ff3b3b);transition:width .15s}
+  #heatFill.hot{animation:pulse .4s infinite}
+  #gripFill{height:100%;background:linear-gradient(90deg,#ff3b3b,var(--sky));transition:width .1s}
+  @keyframes pulse{50%{opacity:.45}}
+  #job{top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 16px;max-width:min(540px,calc(100% - 32px))}
+  #arrow{flex:none;color:var(--volt);transition:color .3s}
+  #jobTitle{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:.04em;line-height:1.1}
+  #jobSub{font-size:13px;color:var(--slate);font-variant-numeric:tabular-nums}
+  #toasts{position:fixed;z-index:3;top:calc(88px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:grid;gap:6px;justify-items:center;pointer-events:none;width:min(520px,calc(100% - 32px))}
+  .toast{background:var(--ink-a);border:1px solid var(--line);border-left:3px solid var(--sky);border-radius:4px;padding:7px 12px;font-size:15px;backdrop-filter:blur(6px);transition:opacity .4s,transform .4s}
+  .toast.good{border-left-color:var(--volt)}.toast.warn{border-left-color:#ffc26b}.toast.bad{border-left-color:#ff3b3b}
+  .toast.out{opacity:0;transform:translateY(-6px)}
+  #mapWrap{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));padding:8px;border-radius:14px}
+  #map{display:block;width:180px;height:180px;border-radius:50%;box-shadow:0 0 0 1px var(--line),0 6px 18px rgba(0,0,0,.35)}
+  #mapWrap .cap{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);display:flex;justify-content:space-between;gap:10px;padding:6px 2px 0}
+  #help{top:calc(16px + env(safe-area-inset-top,0px));right:16px;padding:10px 14px;font-size:13px;line-height:1.55;color:var(--paper)}
+  #help b{font-family:var(--display);font-weight:800;letter-spacing:.08em;color:var(--volt);display:inline-block;min-width:4.6em}
+  #flip{left:50%;top:38%;transform:translateX(-50%);padding:10px 18px;font-family:var(--display);font-weight:800;letter-spacing:.12em;font-size:20px}
+  #rain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(120,150,170,0) 45%,rgba(90,120,140,.45) 100%)}
+  #overlay{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;padding:0 16px calc(48px + env(safe-area-inset-bottom,0px));
+    background:linear-gradient(180deg,rgba(15,23,18,0) 20%,rgba(15,23,18,.55) 55%,rgba(15,23,18,.93) 100%)}
+  #overlay .inner{max-width:760px;margin-inline:auto;width:100%;display:grid;gap:18px}
+  #overlay h1{font-family:var(--display);font-weight:900;font-size:clamp(64px,13vw,150px);line-height:.82;margin:0;letter-spacing:.02em;text-wrap:balance}
+  #overlay h1 span{color:var(--volt)}
+  #overlay p{margin:0;font-size:19px;line-height:1.45;max-width:58ch;color:var(--paper)}
+  .keys{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--slate)}
+  .keys kbd,kbd.k{font-family:var(--display);font-weight:800;letter-spacing:.06em;color:var(--paper);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 7px;margin-right:6px;background:rgba(238,243,230,.06)}
+  #start{justify-self:start;font-family:var(--display);font-weight:900;font-size:22px;letter-spacing:.16em;padding:14px 28px 12px;border:0;border-radius:4px;background:var(--volt);color:var(--ink);cursor:pointer}
+  #start:hover{background:#d9ff70}
+  #start:focus-visible{outline:3px solid var(--paper);outline-offset:3px}
+  #start:disabled{opacity:.6;cursor:wait}
+  #load{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+  .sheet{position:fixed;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:min(600px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px;display:grid;gap:8px;background:rgba(15,23,18,.94)}
+  .bhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+  .bhead .brand{font-family:var(--display);font-weight:900;letter-spacing:.14em;font-size:13px;color:var(--volt)}
+  .btitle{font-family:var(--display);font-weight:900;font-size:34px;line-height:1}
+  .bcash{font-family:var(--display);font-weight:800;font-size:28px;color:var(--volt);font-variant-numeric:tabular-nums}
+  .bsec{margin-top:6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);display:flex;justify-content:space-between;gap:12px}
+  .row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;font:inherit;color:var(--paper);background:rgba(238,243,230,.05);border:1px solid var(--line);border-radius:4px;padding:9px 12px;cursor:pointer}
+  .row:hover,.row:focus-visible{border-color:var(--volt);outline:none}
+  .row.two{grid-template-columns:1fr auto}
+  .row.owned{opacity:.5;cursor:default}
+  .row.fitted{border-color:var(--volt);background:rgba(198,255,61,.1)}
+  .row.locked{opacity:.42;cursor:default}
+  .row kbd{font-family:var(--display);font-weight:800;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 7px}
+  .row .main{display:grid;gap:2px;min-width:0}
+  .row b{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:.03em}
+  .row em{font-style:normal;font-size:13px;color:var(--slate);white-space:pre-line}
+  .row em.need{color:#ff8a6a}
+  .row .pay{font-family:var(--display);font-weight:800;font-size:20px;color:var(--volt);font-variant-numeric:tabular-nums}
+  .row .ctag{font-size:10px;letter-spacing:.16em;padding:1px 6px;border-radius:3px;vertical-align:3px;margin-left:6px;border:1px solid currentColor}
+  .row.fragile .ctag{color:#ffc26b}.row.perish .ctag{color:#ff6a4a}.row.parts .ctag{color:var(--sky)}
+  .empty{font-size:14px;color:var(--slate);padding:6px 0}
+  .bfoot{font-size:12px;color:var(--slate);margin-top:4px}
+  .bfoot b{color:var(--paper)}
+  .setrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .setrow label{font-size:13px;color:var(--slate);min-width:4.5em}
+  input[type=range]{flex:1;min-width:140px;accent-color:var(--volt)}
+  .sbtn{font:inherit;font-size:14px;color:var(--paper);background:rgba(238,243,230,.06);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer}
+  .sbtn:hover{border-color:var(--volt)}
+  .sbtn.on{border-color:var(--volt);background:rgba(198,255,61,.14)}
+  .xbtn{font-size:20px;line-height:1;color:var(--slate);background:none;border:0;cursor:pointer;padding:4px 8px}
+  .xbtn:hover{color:var(--paper)}
+  .sw{width:30px;height:30px;border-radius:5px;border:2px solid transparent;cursor:pointer;padding:0}
+  .sw:hover{border-color:rgba(238,243,230,.5)}
+  .sw.on{border-color:var(--paper)}
+  #swatches{display:flex;flex-wrap:wrap;gap:8px;flex:1}
+  .hint{font-size:13px;color:var(--slate)}.hint b{color:var(--paper)}
+  #garageTabs{display:flex;gap:6px;flex-wrap:wrap}
+  #garageBody{display:grid;gap:6px}
+  .lvl{display:flex;gap:3px}.lvl i{width:14px;height:6px;border-radius:2px;background:rgba(238,243,230,.15)}.lvl i.on{background:var(--volt)}
+  @media (min-width:900px){body.showroom #garage,body.showroom #settings{left:auto;right:16px;transform:translateY(-50%);width:min(520px,44vw)}}
+  body.showroom #zone,body.showroom #speedo,body.showroom #mapWrap,body.showroom #help,body.showroom #job{visibility:hidden}
+  #srHint{position:fixed;z-index:4;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper);background:rgba(15,23,18,.7);border:1px solid var(--line);border-radius:4px;padding:6px 10px;pointer-events:none}
+  #srHint b{color:var(--volt)}
+  #black{position:fixed;inset:0;z-index:6;background:#070b08;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadein .8s}
+  @keyframes fadein{from{opacity:0}}
+  #blackMsg{max-width:44ch;text-align:center;font-size:18px;line-height:1.5;display:grid;gap:10px}
+  #blackMsg b{font-family:var(--display);font-weight:900;font-size:44px;letter-spacing:.06em;color:var(--paper)}
+  #blackMsg span{color:#ff8a6b}
+  @media (max-width:640px){
+    #job{top:calc(118px + env(safe-area-inset-top,0px))}
+    #toasts{top:calc(186px + env(safe-area-inset-top,0px))}
+    #help{display:none}
+    #map{width:120px;height:120px}
+    #spd{font-size:52px}
+    #speedo{min-width:160px}
+  }
+</style>
+
+<canvas id="gl"></canvas>
+
+<div class="hud panel" id="zone" hidden>
+  <div class="brand">SWITCHBACK</div>
+  <div class="name" id="zoneName">CANYON FLOOR</div>
+  <div class="elev" id="elev">Elev 0 m · 0% grade</div>
+  <div class="elev" id="clock">07:00 · Clear · $0</div>
+</div>
+
+<div class="hud panel" id="speedo" hidden>
+  <div class="row" style="display:flex;background:none;border:0;padding:0;cursor:default"><div id="spd">0</div><div class="unit">MPH</div></div>
+  <div id="state"><span class="pill" id="pill" data-s="DIRT">DIRT</span><span class="pill tier" id="tier" data-t="TRAIL">TRAIL</span><span id="bonus"></span></div>
+  <div class="gauge"><span>Battery</span><div class="bar"><div id="battFill"></div></div><span class="gv" id="battV">100%</span></div>
+  <div class="gauge"><span>Motor</span><div class="bar"><div id="heatFill"></div></div><span class="gv" id="heatV">cool</span></div>
+  <div class="gauge"><span>Grip</span><div class="bar"><div id="gripFill"></div></div><span class="gv" id="gripV">—</span></div>
+</div>
+
+<div class="hud panel" id="job" hidden>
+  <svg id="arrow" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M12 2 L20 21 L12 16 L4 21 Z" fill="currentColor"/></svg>
+  <div><div id="jobTitle">No cargo</div><div id="jobSub">Head to the garage</div></div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="rain"></div>
+
+<div class="panel sheet" id="board" hidden>
+  <div class="bhead"><div><div class="brand">SWITCHBACK GARAGE</div><div class="btitle">Job board</div></div><div class="bcash" id="boardCash">$0</div></div>
+  <div class="bsec"><span>Deliveries</span><span id="boardSlots"></span></div>
+  <div id="jobList"></div>
+  <div class="bsec"><span>Shop</span><span></span></div>
+  <div id="boardShop"></div>
+  <div class="bfoot">Press <b>1</b>–<b>3</b> or click a job. <b>E</b> closes. Fragile cargo loses pay when you crash. Perishables pay less every minute. Battery charges while you stand here.</div>
+</div>
+
+<div class="panel sheet" id="garage" hidden>
+  <div class="bhead"><div><div class="brand">SWITCHBACK GARAGE</div><div class="btitle">Workbench</div></div><div style="display:flex;gap:12px;align-items:center"><div class="bcash" id="garageCash">$0</div><button id="closeGarage" class="xbtn" aria-label="Close">✕</button></div></div>
+  <div id="garageTabs"></div>
+  <div id="garageBody"></div>
+  <div class="bfoot">Hover a part to see it on the bike. <b>Drag</b> to spin it. <b>G</b> or <b>Esc</b> closes.</div>
+</div>
+
+<div class="panel sheet" id="settings" hidden style="width:min(480px,calc(100% - 32px))">
+  <div class="bhead"><div><div class="brand">SWITCHBACK</div><div class="btitle">Settings</div></div><button id="closeSet" class="xbtn" aria-label="Close settings">✕</button></div>
+  <div class="bsec"><span>Frame colour</span></div>
+  <div class="setrow"><div id="swatches"></div></div>
+  <div class="setrow"><label for="hue">Any hue</label><input id="hue" type="range" min="0" max="360" value="84"></div>
+  <div class="setrow"><label>Finish</label><div id="finishBtns" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
+  <div class="bsec"><span>Sound</span></div>
+  <div class="setrow"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="100" value="35"><button id="muteBtn" class="sbtn">Sound: on</button></div>
+  <div class="bsec"><span>Camera</span></div>
+  <div class="setrow"><button id="viewBtn" class="sbtn">View: Chase</button><span class="hint">or press <b>V</b> while riding</span></div>
+  <div class="bsec"><span>Danger</span></div>
+  <div class="setrow"><button id="wipeBtn" class="sbtn">Wipe save</button><span class="hint">cash, parts and paint</span></div>
+  <div class="bfoot"><b>Esc</b> closes. Paint and volume are remembered next time.</div>
+</div>
+
+<div id="srHint" hidden>Showroom · <b>hover</b> a part to try it · <b>drag</b> to spin</div>
+<div id="black" hidden><div id="blackMsg"></div></div>
+
+<div class="hud panel" id="mapWrap" hidden>
+  <canvas id="map" width="360" height="360"></canvas>
+  <div class="cap"><span id="mapCap">Ridge · 1.2 km</span><span id="dist">0.0 km</span></div>
+</div>
+
+<div class="hud panel" id="help" hidden>
+  <div><b>W / S</b>Pedal / back brake · pitch in air</div>
+  <div><b>A / D</b>Lean</div>
+  <div><b>Shift</b>Boost</div>
+  <div><b>Q</b>Eco / Trail</div>
+  <div><b>Space</b>Brakes</div>
+  <div><b>Ctrl</b>Wheelie / manual</div>
+  <div><b>E</b>Job board · <b style="min-width:0">G</b> Workbench</div>
+  <div><b>R</b>Reset bike</div>
+  <div><b>V</b>Cycle view</div>
+  <div><b>Esc</b>Settings · <b style="min-width:0">H</b> Hide</div>
+</div>
+
+<div class="hud panel" id="flip" hidden>STUCK? PRESS R</div>
+
+<div id="overlay">
+  <div class="inner">
+    <h1>SWITCH<span>BACK</span></h1>
+    <p>You run parcels out of a garage on the canyon floor to a cabin, a trail camp and the lookout on the ridge, on an e-bike with one battery and one motor between you and the climb. Dirt grips, gravel slides, mud swallows. Boost gets you up the switchbacks and cooks the motor if you lean on it. Coast down to charge. Get back before dark, or ride the headlamp.</p>
+    <div class="keys">
+      <span><kbd>W</kbd><kbd>S</kbd>Pedal, back brake</span>
+      <span><kbd>A</kbd><kbd>D</kbd>Lean</span>
+      <span><kbd>Shift</kbd>Boost</span>
+      <span><kbd>Q</kbd>Eco / Trail</span>
+      <span><kbd>Space</kbd>Brakes</span>
+      <span><kbd>Ctrl</kbd>Wheelie</span>
+      <span><kbd>E</kbd>Jobs</span>
+      <span><kbd>G</kbd>Workbench</span>
+      <span><kbd>V</kbd>View</span>
+      <span><kbd>R</kbd>Reset</span>
+      <span><kbd>Esc</kbd>Settings</span>
+      <span>Gamepad works too</span>
+    </div>
+    <button id="start" disabled>SURVEYING THE CANYON…</button>
+    <div id="load">Cutting the switchbacks</div>
+  </div>
+</div>
+
+<script>addEventListener("error", e => { const l = document.getElementById("load"); if (l && document.getElementById("start").disabled) l.textContent = "Didn't start: " + (e.message || e.target && e.target.src && ("failed to load " + e.target.src.split("/").pop()) || "unknown error"); }, true);</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="switchback.js"></script>
+<script>if (!window.__switchback) document.getElementById("load").textContent = "switchback.js didn't load. Keep it in the same folder as index.html.";</script>
+</body></html>
