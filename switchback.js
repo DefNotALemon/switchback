@@ -676,7 +676,7 @@ function physStep(dt) {
   // ---- e-bike: assist tiers, boost, heat, regen ----
   const pedaling = !crashed && input.thr > 0 && GS.batt >= 0;
   const boosting = pedaling && input.boost && GS.cut <= 0 && GS.batt > 0;
-  const tierW = GS.batt > 0 && GS.cut <= 0 ? (boosting ? ST.boostW : GS.tier === 0 ? 220 : 420) * ST.torque : 0;
+  const tierW = pedaling && GS.batt > 0 && GS.cut <= 0 ? (boosting ? ST.boostW : GS.tier === 0 ? 220 : 420) * ST.torque : 0;
   const humanW = pedaling ? 260 * (1 - GS.dmg * 0.2) : 0;
   GS.boost = boosting;
   if (pedaling && tierW > 0 && started) GS.batt = Math.max(0, GS.batt - DRAIN * tierW * (0.55 + Math.max(0, grade) * 2.2) / 3600 / ST.cap * dt * (boosting ? 1.0 : 0.8) * (ST.tire.roll || 1) * clamp(0.3 + spd / 6, 0.3, 1));
@@ -721,11 +721,16 @@ function physStep(dt) {
     if (!crashed) {
       const W = humanW + tierW;
       if (W > 0) F += Math.min(W / Math.max(Math.abs(vf), 1.4), 260 * ST.torque + (boosting ? 140 : 0)) * (vf < -0.5 ? 0.35 : 1);
-      if (input.brk > 0) F -= (Math.abs(vf) > 0.5 ? 520 : 140) * input.brk * (0.7 + mu * 0.4);
-      if (input.back > 0) { if (vf > 0.5) F -= 260 * input.back; else if (!pedaling) F -= 55 * input.back; }   // back brake, or creep backwards
+      if (input.back > 0 && vf <= 0.5 && !pedaling) F -= 55 * input.back;   // S with no speed on: creep backwards
     }
     if (F > 0) F = Math.min(F, mu * MASS * G * 0.75);
     vx += F / MASS * fx * dt; vz += F / MASS * fz * dt;
+    // brakes always work against the direction of travel and can only ever bring it to a stop
+    if (!crashed && (input.brk > 0 || (input.back > 0 && vf > 0.5))) {
+      const B = (input.brk > 0 ? (Math.abs(vf) > 0.5 ? 520 : 140) * input.brk * (0.7 + mu * 0.4) : 0) + (input.back > 0 && vf > 0.5 ? 260 * input.back : 0);
+      const vf2 = vx * fx + vz * fz, dv = Math.min(Math.abs(vf2), B / MASS * dt) * Math.sign(vf2);
+      vx -= dv * fx; vz -= dv * fz;
+    }
     // rolling and aero drag; mud and ruts you didn't cut drag hard
     const roll = lerp(S.roll, S.roll * 1.6, wet) * ST.roll * (1 - rut * 0.4) * MASS * G, aero = 0.32 * spd * spd;
     const sp = Math.hypot(vx, vz);
